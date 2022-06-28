@@ -48,7 +48,7 @@ public class AEffect extends Structure {
 	public int realQualities;
 	// number of offline qualities (0: realtime only)
 	public int offQualities;
-	// input samplerate to output samplerate ratio, not used yet
+	// input samplerate to Output samplerate ratio, not used yet
 	public float ioRatio;
 
 	public Pointer object;
