@@ -165,7 +165,7 @@ public class AEffect extends Structure {
                              "numParams",
                              "numInputs",
                              "numOutputs",
-                             "flags",
+                             "Flags",
                              "resvd1",
                              "resvd2",
                              "initialDelay",

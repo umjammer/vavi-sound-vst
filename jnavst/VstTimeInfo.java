@@ -71,6 +71,6 @@ public class VstTimeInfo extends Structure {
         return Arrays.asList(
                 "samplePos", "sampleRate", "nanoSeconds", "ppqPos", "tempo", "barStartPos", "cycleStartPos",
                 "cycleEndPos", "timeSigNumerator", "timeSigDenominator", "smpteOffset", "smpteFrameRate",
-                "samplesToNextClock", "flags");
+                "samplesToNextClock", "Flags");
     }
 }
