@@ -150,11 +150,12 @@ public class AEffect extends Structure {
 
 		public final int code;
 
-		private Opcode(int code) {
+		Opcode(int code) {
 			this.code = code;
 		}
 	}
 
+    @Override
     protected List<String> getFieldOrder() {
         return Arrays.asList("magic",
                              "dispatcher",

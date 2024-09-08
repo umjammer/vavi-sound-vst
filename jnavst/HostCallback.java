@@ -54,10 +54,10 @@ public class HostCallback implements Callback {
 		audioMasterCloseFileSelector,
 		audioMasterEditFile,
 		audioMasterGetChunkFile,
-		audioMasterGetInputSpeakerArrangement;
-	};
+		audioMasterGetInputSpeakerArrangement
+    }
 
-	public int Callback(AEffect effect, int opcode, int index, int value, Pointer ptr, float opt) {
+    public int Callback(AEffect effect, int opcode, int index, int value, Pointer ptr, float opt) {
 		if (opcode >= Opcodes.values().length) {
 			System.err.println("WARN Called with unsupported VST HOST opcode " + opcode);
 			return 0;

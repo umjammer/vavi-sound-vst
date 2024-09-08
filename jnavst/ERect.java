@@ -25,6 +25,7 @@ public class ERect extends Structure {
 		return "Rect[" + top + ", " + left + ", " + bottom + ", " + right + "]";
 	}
 
+    @Override
     protected List<String> getFieldOrder() {
         return Arrays.asList("top", "left", "bottom", "right");
     }

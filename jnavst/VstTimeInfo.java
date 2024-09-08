@@ -67,6 +67,7 @@ public class VstTimeInfo extends Structure {
      */
     public int flags;
 
+    @Override
     protected List<String> getFieldOrder() {
         return Arrays.asList(
                 "samplePos", "sampleRate", "nanoSeconds", "ppqPos", "tempo", "barStartPos", "cycleStartPos",

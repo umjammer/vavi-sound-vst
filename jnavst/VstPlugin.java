@@ -186,10 +186,10 @@ public class VstPlugin {
 
 		int pointerArraySize = source.length * Native.POINTER_SIZE;
 		int floatArraySize = numFrames * 4;
-		Pointer pointerArray = new Memory(pointerArraySize + floatArraySize * source.length);
+		Pointer pointerArray = new Memory(pointerArraySize + (long) floatArraySize * source.length);
 		Pointer dataStorage = pointerArray.share(pointerArraySize);
 		for (int i = 0; i < source.length; i++) {
-			pointerArray.setPointer(i * Native.POINTER_SIZE, dataStorage.share(floatArraySize * i, floatArraySize));
+			pointerArray.setPointer((long) i * Native.POINTER_SIZE, dataStorage.share((long) floatArraySize * i, floatArraySize));
 		}
 		return pointerArray;
 	}
@@ -205,12 +205,12 @@ public class VstPlugin {
 		}
 
 		for (int i = 0; i < inputs.length; i++) {
-			Pointer inputsArray = inputsMemory.getPointer(i * Native.POINTER_SIZE);
+			Pointer inputsArray = inputsMemory.getPointer((long) i * Native.POINTER_SIZE);
 			inputsArray.write(0, inputs[i], 0, numFrames);
 		}
 		effect.processReplacing.callback(effect, inputsMemory, outputsMemory, numFrames);
 		for (int i = 0; i < outputs.length; i++) {
-			Pointer outputArray = outputsMemory.getPointer(i * Native.POINTER_SIZE);
+			Pointer outputArray = outputsMemory.getPointer((long) i * Native.POINTER_SIZE);
 			outputArray.read(0, outputs[i], 0, numFrames);
 		}
 	}
