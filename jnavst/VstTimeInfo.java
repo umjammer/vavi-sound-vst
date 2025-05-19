@@ -54,7 +54,7 @@ public class VstTimeInfo extends Structure {
      */
     public int smpteOffset;
     /**
-     * @see VstSmpteFrameRate
+     * @see SmpteFrameRate
      */
     public int smpteFrameRate;
     /**

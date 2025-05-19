@@ -70,7 +70,7 @@ public class AEffect extends Structure {
 	public interface ProcessCallback extends Callback {
 		void callback(AEffect effect, Pointer inputs, Pointer outputs, int sampleFrames);
 	}
-	
+
 	public interface SetParameterCallback extends Callback {
 		void callback(AEffect effect, int index, float parameter);
 	}

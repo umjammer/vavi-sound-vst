@@ -188,8 +188,8 @@ public class HostCallback implements Callback {
 //                return (long) OnGetInputSpeakerArrangement(nEffect);
         }
 
-        logger.log(Level.WARNING, "WARN Called with non-implemented VST HOST opcode " + opcode + "( "
-                + Opcodes.values()[opcode] + " )");
+        logger.log(Level.WARNING, "WARN Called with non-implemented VST HOST opcode " + opcode + "( " +
+                Opcodes.values()[opcode] + " )");
         return 0;
     }
 
