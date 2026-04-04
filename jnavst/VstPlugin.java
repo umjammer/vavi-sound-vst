@@ -26,7 +26,7 @@ public class VstPlugin {
 		}
 	}
 
-	private boolean b(long value) {
+	private static boolean b(long value) {
 		return value != VstConst.VST_FALSE;
 	}
 
@@ -179,7 +179,7 @@ public class VstPlugin {
 		return effect.numOutputs;
 	}
 
-	private Pointer createFloatArray2D(float[][] source, int numFrames) {
+	private static Pointer createFloatArray2D(float[][] source, int numFrames) {
 		if (source.length == 0) {
 			return null;
 		}

@@ -193,27 +193,27 @@ public class HostCallback implements Callback {
         return 0;
     }
 
-    private int OnGetProductString(Pointer ptr) {
+    private static int OnGetProductString(Pointer ptr) {
         ptr.setString(0, "JNAVST");
         return VstConst.VST_TRUE;
     }
 
-    private int OnGetVendorString(Pointer ptr) {
+    private static int OnGetVendorString(Pointer ptr) {
         ptr.setString(0, "Uri Shaked");
         return VstConst.VST_TRUE;
     }
 
-    private int OnIdle(AEffect effect) {
+    private static int OnIdle(AEffect effect) {
         System.out.println("IDLE");
         return 0;
     }
 
-    private int OnGetCurrentUniqueId(AEffect effect) {
+    private static int OnGetCurrentUniqueId(AEffect effect) {
         System.out.println("OnGetCurrentUniqueId");
         return 0;
     }
 
-    private int OnGetVersion(AEffect effect) {
+    private static int OnGetVersion(AEffect effect) {
         return VstConst.VST_VERSION_2_4;
     }
 
@@ -259,7 +259,7 @@ public class HostCallback implements Callback {
         return (int) Pointer.nativeValue(timeInfoPointer);
     }
 
-    private int OnSetParameterAutomated(AEffect effect, int index, float opt) {
+    private static int OnSetParameterAutomated(AEffect effect, int index, float opt) {
         System.out.println("Set automated parameter " + index + " to " + opt);
         return VstConst.VST_TRUE;
     }
