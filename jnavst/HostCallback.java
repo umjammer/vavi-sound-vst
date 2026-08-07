@@ -2,265 +2,296 @@ package org.urish.jnavst;
 
 import java.lang.System.Logger;
 import java.lang.System.Logger.Level;
+import java.util.Set;
 
 import com.sun.jna.Callback;
+import com.sun.jna.Native;
 import com.sun.jna.Pointer;
 
 import static java.lang.System.getLogger;
 
 
+/**
+ * The {@code audioMasterCallback} a plug-in is handed at its entry point.
+ * <p>
+ * One instance belongs to one {@link VstPlugin} and has to outlive it: the plug-in holds the
+ * function pointer JNA built around this object and calls it from its own threads, so letting it
+ * be collected takes the process down. {@link VstPlugin} keeps the reference for that reason.
+ * <p>
+ * What is answered here is the part of the protocol that is the same for every host; anything the
+ * application has an opinion about is asked of its {@link VstHost}.
+ *
+ * @author <a href="mailto:umjammer@gmail.com">Naohide Sano</a> (nsano)
+ * @version 0.00 2026-08-08 nsano initial version <br>
+ */
 public class HostCallback implements Callback {
 
     private static final Logger logger = getLogger(HostCallback.class.getName());
 
-    private enum Opcodes {
-        audioMasterAutomate,
-        audioMasterVersion,
-        audioMasterCurrentId,
-        audioMasterIdle,
-        audioMasterPinConnected,
-        _placeholder_1, // empty slot before VST 2.0 stuff
-        audioMasterWantMidi,
-        audioMasterGetTime,
-        audioMasterProcessEvents,
-        audioMasterSetTime,
-        audioMasterTempoAt,
-        audioMasterGetNumAutomatableParameters,
-        audioMasterGetParameterQuantization,
-        audioMasterIOChanged,
-        audioMasterNeedIdle,
-        audioMasterSizeWindow,
-        audioMasterGetSampleRate,
-        audioMasterGetBlockSize,
-        audioMasterGetInputLatency,
-        audioMasterGetOutputLatency,
-        audioMasterGetPreviousPlug,
-        audioMasterGetNextPlug,
-        audioMasterWillReplaceOrAccumulate,
-        audioMasterGetCurrentProcessLevel,
-        audioMasterGetAutomationState,
-        audioMasterOfflineStart,
-        audioMasterOfflineRead,
-        audioMasterOfflineWrite,
-        audioMasterOfflineGetCurrentPass,
-        audioMasterOfflineGetCurrentMetaPass,
-        audioMasterSetOutputSampleRate,
-        audioMasterGetOutputSpeakerArrangement,
-        audioMasterGetVendorString,
-        audioMasterGetProductString,
-        audioMasterGetVendorVersion,
-        audioMasterVendorSpecific,
-        audioMasterSetIcon,
-        audioMasterCanDo,
-        audioMasterGetLanguage,
-        audioMasterOpenWindow,
-        audioMasterCloseWindow,
-        audioMasterGetDirectory,
-        audioMasterUpdateDisplay,
-        audioMasterBeginEdit,
-        audioMasterEndEdit,
-        audioMasterOpenFileSelector,
-        audioMasterCloseFileSelector,
-        audioMasterEditFile,
-        audioMasterGetChunkFile,
-        audioMasterGetInputSpeakerArrangement
+    // audioMaster opcodes, in the order aeffectx.h declares them
+
+    private static final int audioMasterAutomate = 0;
+    private static final int audioMasterVersion = 1;
+    private static final int audioMasterCurrentId = 2;
+    private static final int audioMasterIdle = 3;
+    private static final int audioMasterPinConnected = 4;
+    private static final int audioMasterWantMidi = 6;
+    private static final int audioMasterGetTime = 7;
+    private static final int audioMasterProcessEvents = 8;
+    private static final int audioMasterTempoAt = 10;
+    private static final int audioMasterGetNumAutomatableParameters = 11;
+    private static final int audioMasterGetParameterQuantization = 12;
+    private static final int audioMasterIOChanged = 13;
+    private static final int audioMasterNeedIdle = 14;
+    private static final int audioMasterSizeWindow = 15;
+    private static final int audioMasterGetSampleRate = 16;
+    private static final int audioMasterGetBlockSize = 17;
+    private static final int audioMasterGetInputLatency = 18;
+    private static final int audioMasterGetOutputLatency = 19;
+    private static final int audioMasterWillReplaceOrAccumulate = 22;
+    private static final int audioMasterGetCurrentProcessLevel = 23;
+    private static final int audioMasterGetAutomationState = 24;
+    private static final int audioMasterGetVendorString = 32;
+    private static final int audioMasterGetProductString = 33;
+    private static final int audioMasterGetVendorVersion = 34;
+    private static final int audioMasterVendorSpecific = 35;
+    private static final int audioMasterCanDo = 37;
+    private static final int audioMasterGetLanguage = 38;
+    private static final int audioMasterGetDirectory = 41;
+    private static final int audioMasterUpdateDisplay = 42;
+    private static final int audioMasterBeginEdit = 43;
+    private static final int audioMasterEndEdit = 44;
+    private static final int audioMasterOpenFileSelector = 45;
+    private static final int audioMasterCloseFileSelector = 46;
+
+    /**
+     * What this host says yes to when a plug-in asks. Everything listed is answered by the code
+     * here without the application having to do anything; a {@link VstHost} that supports more
+     * says so from {@link VstHost#canDo}, which is asked first.
+     */
+    private static final Set<String> CAN_DO = Set.of(
+            "sendVstEvents",
+            "sendVstMidiEvent",
+            "receiveVstEvents",
+            "receiveVstMidiEvent",
+            "sendVstTimeInfo",
+            "sizeWindow",
+            "startStopProcess",
+            "acceptIOChanges",
+            "supplyIdle");
+
+    private final VstHost host;
+
+    /** the plug-in this belongs to; null until its entry point has returned */
+    VstPlugin plugin;
+
+    /**
+     * Answered to {@code audioMasterGetTime}. It is written afresh on every call and its address
+     * handed back, which is what the protocol asks for - the plug-in reads it before it calls
+     * again.
+     */
+    private final VstTimeInfo timeInfo = new VstTimeInfo();
+
+    public HostCallback() {
+        this(new VstHost() {});
     }
 
-    public int Callback(AEffect effect, int opcode, int index, int value, Pointer ptr, float opt) {
-        if (opcode >= Opcodes.values().length) {
-            logger.log(Level.TRACE, "WARN Called with unsupported VST HOST opcode " + opcode);
+    public HostCallback(VstHost host) {
+        this.host = host;
+        // touch the memory once here so the pointer handed out later is never allocated from
+        // inside a callback the audio thread is running
+        timeInfo.write();
+    }
+
+    public VstHost getHost() {
+        return host;
+    }
+
+    /**
+     * The single method JNA turns into the native function pointer.
+     * <p>
+     * Nothing may be thrown out of here: the caller is C++ and an exception crossing back into it
+     * is undefined, so everything unexpected is logged and answered with 0, which every opcode
+     * reads as "not handled".
+     */
+    public long callback(Pointer effect, int opcode, int index, long value, Pointer ptr, float opt) {
+        try {
+            return dispatch(opcode, index, value, ptr, opt);
+        } catch (Throwable t) {
+            logger.log(Level.ERROR, "host callback failed for opcode " + opcode, t);
             return 0;
         }
+    }
 
-        switch (Opcodes.values()[opcode]) {
-            case audioMasterAutomate:
-                return OnSetParameterAutomated(effect, index, opt);
-            case audioMasterVersion:
-                return OnGetVersion(effect);
-            case audioMasterCurrentId:
-                return OnGetCurrentUniqueId(effect);
-            case audioMasterIdle:
-                return OnIdle(effect);
-            case audioMasterPinConnected:
-//                return (value != 0) ? OnInputConnected(effect, index) :
-//                OnOutputConnected(effect, index);
-
-            // VST 2.0 additions...
-//            case audioMasterWantMidi :
-//                return OnWantEvents(effect, value);
-            case audioMasterGetTime:
-                return onGetTime(effect, value);
-//            case audioMasterProcessEvents:
-//                return OnProcessEvents(effect, (VstEvents *)ptr);
-//            case audioMasterSetTime:
-//                return OnSetTime(effect, value, (VstTimeInfo *)ptr);
-//            case audioMasterTempoAt:
-//                return OnTempoAt(effect, value);
-//            case audioMasterGetNumAutomatableParameters:
-//                return OnGetNumAutomatableParameters(effect);
-//            case audioMasterGetParameterQuantization:
-//                return OnGetParameterQuantization(effect);
-//            case audioMasterIOChanged:
-//                return OnIoChanged(effect);
-//            case audioMasterNeedIdle:
-//                return OnNeedIdle(effect);
-//            case audioMasterSizeWindow:
-//                return OnSizeWindow(effect, index, value);
-//            case audioMasterGetSampleRate:
-//                return OnUpdateSampleRate(effect);
-//            case audioMasterGetBlockSize:
-//                return OnUpdateBlockSize(effect);
-//            case audioMasterGetInputLatency:
-//                return OnGetInputLatency(effect);
-//            case audioMasterGetOutputLatency:
-//                return OnGetOutputLatency(effect);
-//            case audioMasterGetPreviousPlug:
-//                return GetPreviousPlugIn(effect);
-//            case audioMasterGetNextPlug:
-//                return GetNextPlugIn(effect);
-//            case audioMasterWillReplaceOrAccumulate:
-//                return OnWillProcessReplacing(effect);
-//            case audioMasterGetCurrentProcessLevel:
-//                return OnGetCurrentProcessLevel(effect);
-//            case audioMasterGetAutomationState:
-//                return OnGetAutomationState(effect);
-//            case audioMasterOfflineStart:
-//                return OnOfflineStart(effect, (VstAudioFile) ptr, value, index);
-//            break;
-//            case audioMasterOfflineRead:
-//                return OnOfflineRead(effect, (VstOfflineTask) ptr, (VstOfflineOption) value, !!index);
-//            break;
-//            case audioMasterOfflineWrite:
-//                return OnOfflineWrite(effect, (VstOfflineTask) ptr, (VstOfflineOption) value);
-//            break;
-//            case audioMasterOfflineGetCurrentPass:
-//                return OnOfflineGetCurrentPass(effect);
-//            case audioMasterOfflineGetCurrentMetaPass:
-//                return OnOfflineGetCurrentMetaPass(effect);
-//            case audioMasterSetOutputSampleRate:
-//                OnSetOutputSampleRate(effect, opt);
-//                return 1;
-//            // VST_2.3
-//            case audioMasterGetOutputSpeakerArrangement:
-//                return 0;
-//            case audioMasterGetSpeakerArrangement:
-//                // see above comment
-//                return 0;
-            case audioMasterGetVendorString:
-                return OnGetVendorString(ptr);
-            case audioMasterGetProductString:
-                return OnGetProductString(ptr);
-//            case audioMasterGetVendorVersion:
-//                return OnGetHostVendorVersion();
-//            case audioMasterVendorSpecific:
-//                return OnHostVendorSpecific(effect, index, value, ptr, opt);
-//            case audioMasterSetIcon:
-//                // undefined in VST 2.0 specification
-//                break;
-//            case audioMasterCanDo:
-//                return OnCanDo((const char *)ptr);
-//            case audioMasterGetLanguage:
-//                return OnGetHostLanguage();
-//            case audioMasterOpenWindow:
-//                return (long) OnOpenWindow(nEffect, (VstWindow *)ptr);
-//            case audioMasterCloseWindow:
-//                return OnCloseWindow(nEffect, (VstWindow *)ptr);
-//            case audioMasterGetDirectory:
-//                return (long) OnGetDirectory(nEffect);
-//            case audioMasterUpdateDisplay:
-//                return OnUpdateDisplay(nEffect);
-//            /* VST 2.1 additions... */
-//            case audioMasterBeginEdit:
-//                return OnBeginEdit(nEffect);
-//            case audioMasterEndEdit:
-//                return OnEndEdit(nEffect);
-//            case audioMasterOpenFileSelector:
-//                return OnOpenFileSelector(nEffect, (VstFileSelect) ptr);
-//            /* VST 2.2 additions... */
-//            case audioMasterCloseFileSelector:
-//                return OnCloseFileSelector(nEffect, (VstFileSelect) ptr);
-//            case audioMasterEditFile:
-//                return OnEditFile(nEffect, (byte[]) ptr);
-//            case audioMasterGetChunkFile:
-//                return OnGetChunkFile(nEffect, ptr);
-//
-//            case audioMasterGetInputSpeakerArrangement:
-//                return (long) OnGetInputSpeakerArrangement(nEffect);
+    private long dispatch(int opcode, int index, long value, Pointer ptr, float opt) {
+        switch (opcode) {
+        case audioMasterAutomate:
+            host.automate(plugin, index, opt);
+            return 1;
+        case audioMasterVersion:
+            return VstConst.VST_VERSION_2_4;
+        case audioMasterCurrentId:
+            // only a shell plug-in asks, to learn which of the plug-ins it holds to become
+            return plugin != null ? plugin.getShellPluginId() : 0;
+        case audioMasterIdle:
+            return 0;
+        case audioMasterPinConnected:
+            // 0 means connected, and every pin this host asks for is
+            return 0;
+        case audioMasterWantMidi:
+            return 1;
+        case audioMasterGetTime:
+            return Pointer.nativeValue(timeInfo(value));
+        case audioMasterProcessEvents:
+            readEvents(ptr);
+            return 1;
+        case audioMasterTempoAt:
+            // in tempo * 10000, at a position this host does not vary the tempo over
+            return (long) (host.getTempo() * 10000);
+        case audioMasterGetNumAutomatableParameters:
+            return 0;
+        case audioMasterGetParameterQuantization:
+            return 1;
+        case audioMasterIOChanged:
+            if (plugin != null) plugin.refresh();
+            return 1;
+        case audioMasterNeedIdle:
+            return 1;
+        case audioMasterSizeWindow:
+            return host.sizeWindow(plugin, index, (int) value) ? 1 : 0;
+        case audioMasterGetSampleRate:
+            return (long) host.getSampleRate();
+        case audioMasterGetBlockSize:
+            return host.getBlockSize();
+        case audioMasterGetInputLatency:
+        case audioMasterGetOutputLatency:
+            return 0;
+        case audioMasterWillReplaceOrAccumulate:
+            return 1; // replace
+        case audioMasterGetCurrentProcessLevel:
+            return VstConst.VST_ProcessLevelRealtime;
+        case audioMasterGetAutomationState:
+            return 1; // off
+        case audioMasterGetVendorString:
+            return writeString(ptr, host.getVendor(), VstConst.VST_MaxVendorStrLen);
+        case audioMasterGetProductString:
+            return writeString(ptr, host.getProduct(), VstConst.VST_MaxProductStrLen);
+        case audioMasterGetVendorVersion:
+            return host.getVendorVersion();
+        case audioMasterVendorSpecific:
+            return 0;
+        case audioMasterCanDo:
+            return canDo(ptr);
+        case audioMasterGetLanguage:
+            return VstConst.VST_LangEnglish;
+        case audioMasterGetDirectory:
+            return 0;
+        case audioMasterUpdateDisplay:
+            host.updateDisplay(plugin);
+            return 1;
+        case audioMasterBeginEdit:
+        case audioMasterEndEdit:
+            return 1;
+        case audioMasterOpenFileSelector:
+        case audioMasterCloseFileSelector:
+            return 0;
+        default:
+            logger.log(Level.DEBUG, "unhandled VST host opcode " + opcode);
+            return 0;
         }
-
-        logger.log(Level.WARNING, "WARN Called with non-implemented VST HOST opcode " + opcode + "( " +
-                Opcodes.values()[opcode] + " )");
-        return 0;
     }
 
-    private static int OnGetProductString(Pointer ptr) {
-        ptr.setString(0, "JNAVST");
-        return VstConst.VST_TRUE;
-    }
+    /**
+     * @param filter the flags the plug-in wants filled in - a field it did not ask for is left
+     *               alone and its valid bit stays clear
+     */
+    private Pointer timeInfo(long filter) {
+        timeInfo.samplePos = host.getSamplePosition();
+        timeInfo.sampleRate = host.getSampleRate();
+        timeInfo.flags = host.isPlaying() ? VstConst.VST_TransportPlaying : 0;
 
-    private static int OnGetVendorString(Pointer ptr) {
-        ptr.setString(0, "Uri Shaked");
-        return VstConst.VST_TRUE;
-    }
-
-    private static int OnIdle(AEffect effect) {
-        System.out.println("IDLE");
-        return 0;
-    }
-
-    private static int OnGetCurrentUniqueId(AEffect effect) {
-        System.out.println("OnGetCurrentUniqueId");
-        return 0;
-    }
-
-    private static int OnGetVersion(AEffect effect) {
-        return VstConst.VST_VERSION_2_4;
-    }
-
-    private final VstTimeInfo timeInfo = new VstTimeInfo();
-    private final Pointer timeInfoPointer = timeInfo.getPointer();
-
-    private int onGetTime(AEffect effect, int value) {
-        System.out.println("onGetTime called");
-        timeInfo.samplePos = 0.0;
-        timeInfo.sampleRate = 44100; // TODO
-        timeInfo.flags = 0;
-        if ((value & VstConst.VST_NanosValid) != 0) {
-            timeInfo.nanoSeconds = 0.0;
+        if ((filter & VstConst.VST_NanosValid) != 0) {
+            timeInfo.nanoSeconds = System.nanoTime();
             timeInfo.flags |= VstConst.VST_NanosValid;
         }
-        if ((value & VstConst.VST_PpqPosValid) != 0) {
-            timeInfo.ppqPos = 0.0;
+        double quarterNotes = timeInfo.samplePos / timeInfo.sampleRate * host.getTempo() / 60.0;
+        if ((filter & VstConst.VST_PpqPosValid) != 0) {
+            timeInfo.ppqPos = quarterNotes;
             timeInfo.flags |= VstConst.VST_PpqPosValid;
         }
-        if ((value & VstConst.VST_TempoValid) != 0) {
-            timeInfo.tempo = 120; // TODO
+        if ((filter & VstConst.VST_TempoValid) != 0) {
+            timeInfo.tempo = host.getTempo();
             timeInfo.flags |= VstConst.VST_TempoValid;
         }
-        if ((value & VstConst.VST_BarsValid) != 0) {
-            timeInfo.barStartPos = 0.0;
+        if ((filter & VstConst.VST_BarsValid) != 0) {
+            int beatsPerBar = Math.max(1, host.getTimeSigNumerator());
+            timeInfo.barStartPos = Math.floor(quarterNotes / beatsPerBar) * beatsPerBar;
             timeInfo.flags |= VstConst.VST_BarsValid;
         }
-        if ((value & VstConst.VST_CyclePosValid) != 0) {
-            timeInfo.cycleStartPos = 0.0;
-            timeInfo.cycleEndPos = 0.0;
+        if ((filter & VstConst.VST_CyclePosValid) != 0) {
+            timeInfo.cycleStartPos = 0;
+            timeInfo.cycleEndPos = 0;
             timeInfo.flags |= VstConst.VST_CyclePosValid;
         }
-        if ((value & VstConst.VST_TimeSigValid) != 0) {
-            timeInfo.timeSigNumerator = 4; // TODO
-            timeInfo.timeSigDenominator = 4; // TODO
+        if ((filter & VstConst.VST_TimeSigValid) != 0) {
+            timeInfo.timeSigNumerator = host.getTimeSigNumerator();
+            timeInfo.timeSigDenominator = host.getTimeSigDenominator();
             timeInfo.flags |= VstConst.VST_TimeSigValid;
         }
-        if ((value & VstConst.VST_ClockValid) != 0) { // bit 15
+        if ((filter & VstConst.VST_ClockValid) != 0) {
             timeInfo.samplesToNextClock = 0;
             timeInfo.flags |= VstConst.VST_ClockValid;
         }
         timeInfo.write();
-        return (int) Pointer.nativeValue(timeInfoPointer);
+        return timeInfo.getPointer();
     }
 
-    private static int OnSetParameterAutomated(AEffect effect, int index, float opt) {
-        System.out.println("Set automated parameter " + index + " to " + opt);
-        return VstConst.VST_TRUE;
+    /** the MIDI a plug-in sends back out, unpacked from the {@code VstEvents} it points at */
+    private void readEvents(Pointer events) {
+        if (events == null) return;
+        int count = events.getInt(0);
+        for (int i = 0; i < count; i++) {
+            Pointer event = events.getPointer(16 + (long) i * Native.POINTER_SIZE);
+            if (event == null) continue;
+            int type = event.getInt(0);
+            int deltaFrames = event.getInt(8);
+            if (type == VstConst.VST_MidiType) {
+                byte[] data = event.getByteArray(24, 4);
+                host.midiOut(plugin, trim(data), deltaFrames);
+            } else if (type == VstConst.VST_SysExType) {
+                int length = event.getInt(16);
+                Pointer dump = event.getPointer(32);
+                if (dump != null && length > 0) {
+                    host.midiOut(plugin, dump.getByteArray(0, length), deltaFrames);
+                }
+            }
+        }
+    }
+
+    /** a MIDI event always carries four bytes; the message in it may be shorter */
+    private static byte[] trim(byte[] data) {
+        int length = switch (data[0] & 0xf0) {
+            case 0xc0, 0xd0 -> 2;
+            default -> 3;
+        };
+        byte[] message = new byte[length];
+        System.arraycopy(data, 0, message, 0, length);
+        return message;
+    }
+
+    private long canDo(Pointer ptr) {
+        if (ptr == null) return VstConst.VST_CanDoUnknown;
+        String what = ptr.getString(0);
+        int answer = host.canDo(what);
+        if (answer != VstConst.VST_CanDoUnknown) return answer;
+        return CAN_DO.contains(what) ? VstConst.VST_CanDoYes : VstConst.VST_CanDoNo;
+    }
+
+    private static long writeString(Pointer ptr, String value, int max) {
+        if (ptr == null) return 0;
+        String text = value == null ? "" : value;
+        if (text.length() > max) text = text.substring(0, max);
+        ptr.setString(0, text);
+        return 1;
     }
 }
