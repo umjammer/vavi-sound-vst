@@ -7,7 +7,7 @@ package org.urish.jnavst;
  * The names keep the {@code VST_} prefix the rest of this package already used rather than the
  * SDK's {@code kVst}/{@code eff} ones, so nothing that referred to them before has to change.
  */
-public interface VstConst {
+interface VstConst {
 
     int VST_FALSE = 0;
     int VST_TRUE = 1;

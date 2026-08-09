@@ -116,7 +116,7 @@ public class VstPlugin {
      * named after the bundle in {@code Contents/MacOS}. Everywhere else the path already is the
      * library.
      */
-    static File binaryOf(File file) {
+    private static File binaryOf(File file) {
         if (!file.isDirectory()) return file;
 
         File macos = new File(file, "Contents/MacOS");
@@ -192,7 +192,7 @@ public class VstPlugin {
         return effect.dispatcher.callback(handle, opcode.code, index, value, ptr, opt);
     }
 
-    public long dispatch(Opcode opcode) {
+    private long dispatch(Opcode opcode) {
         return dispatch(opcode, 0, 0, null, 0);
     }
 
@@ -373,7 +373,7 @@ public class VstPlugin {
         dispatch(Opcode.effEndSetProgram, 0, 0, null, 0);
     }
 
-    public int getProgram() {
+    private int getProgram() {
         return (int) dispatch(Opcode.effGetProgram);
     }
 
@@ -528,7 +528,7 @@ public class VstPlugin {
      * @param window the native window handle - an {@code HWND} on Windows, an {@code NSView*} on
      *               macOS, a {@code Window} on X11
      */
-    public boolean editOpen(Pointer window) {
+    private boolean editOpen(Pointer window) {
         if (!hasEditor()) return false;
         editorOpen = b(dispatch(Opcode.effEditOpen, 0, 0, window, 0));
         return editorOpen;

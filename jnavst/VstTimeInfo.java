@@ -6,7 +6,7 @@ import java.util.List;
 import com.sun.jna.Structure;
 
 
-public class VstTimeInfo extends Structure {
+class VstTimeInfo extends Structure {
     /**
      * current Position in audio samples (always valid)
      */

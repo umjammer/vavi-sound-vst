@@ -24,7 +24,7 @@ import static java.lang.System.getLogger;
  * @author <a href="mailto:umjammer@gmail.com">Naohide Sano</a> (nsano)
  * @version 0.00 2026-08-08 nsano initial version <br>
  */
-public class HostCallback implements Callback {
+class HostCallback implements Callback {
 
     private static final Logger logger = getLogger(HostCallback.class.getName());
 
@@ -124,81 +124,57 @@ public class HostCallback implements Callback {
     }
 
     private long dispatch(int opcode, int index, long value, Pointer ptr, float opt) {
-        switch (opcode) {
-        case audioMasterAutomate:
-            host.automate(plugin, index, opt);
-            return 1;
-        case audioMasterVersion:
-            return VstConst.VST_VERSION_2_4;
-        case audioMasterCurrentId:
+        return switch (opcode) {
+            case audioMasterAutomate -> {
+                host.automate(plugin, index, opt);
+                yield 1;
+            }
+            case audioMasterVersion -> VstConst.VST_VERSION_2_4;
             // only a shell plug-in asks, to learn which of the plug-ins it holds to become
-            return plugin != null ? plugin.getShellPluginId() : 0;
-        case audioMasterIdle:
-            return 0;
-        case audioMasterPinConnected:
+            case audioMasterCurrentId -> plugin != null ? plugin.getShellPluginId() : 0;
+            case audioMasterIdle -> 0;
             // 0 means connected, and every pin this host asks for is
-            return 0;
-        case audioMasterWantMidi:
-            return 1;
-        case audioMasterGetTime:
-            return Pointer.nativeValue(timeInfo(value));
-        case audioMasterProcessEvents:
-            readEvents(ptr);
-            return 1;
-        case audioMasterTempoAt:
+            case audioMasterPinConnected -> 0;
+            case audioMasterWantMidi -> 1;
+            case audioMasterGetTime -> Pointer.nativeValue(timeInfo(value));
+            case audioMasterProcessEvents -> {
+                readEvents(ptr);
+                yield 1;
+            }
             // in tempo * 10000, at a position this host does not vary the tempo over
-            return (long) (host.getTempo() * 10000);
-        case audioMasterGetNumAutomatableParameters:
-            return 0;
-        case audioMasterGetParameterQuantization:
-            return 1;
-        case audioMasterIOChanged:
-            if (plugin != null) plugin.refresh();
-            return 1;
-        case audioMasterNeedIdle:
-            return 1;
-        case audioMasterSizeWindow:
-            return host.sizeWindow(plugin, index, (int) value) ? 1 : 0;
-        case audioMasterGetSampleRate:
-            return (long) host.getSampleRate();
-        case audioMasterGetBlockSize:
-            return host.getBlockSize();
-        case audioMasterGetInputLatency:
-        case audioMasterGetOutputLatency:
-            return 0;
-        case audioMasterWillReplaceOrAccumulate:
-            return 1; // replace
-        case audioMasterGetCurrentProcessLevel:
-            return VstConst.VST_ProcessLevelRealtime;
-        case audioMasterGetAutomationState:
-            return 1; // off
-        case audioMasterGetVendorString:
-            return writeString(ptr, host.getVendor(), VstConst.VST_MaxVendorStrLen);
-        case audioMasterGetProductString:
-            return writeString(ptr, host.getProduct(), VstConst.VST_MaxProductStrLen);
-        case audioMasterGetVendorVersion:
-            return host.getVendorVersion();
-        case audioMasterVendorSpecific:
-            return 0;
-        case audioMasterCanDo:
-            return canDo(ptr);
-        case audioMasterGetLanguage:
-            return VstConst.VST_LangEnglish;
-        case audioMasterGetDirectory:
-            return 0;
-        case audioMasterUpdateDisplay:
-            host.updateDisplay(plugin);
-            return 1;
-        case audioMasterBeginEdit:
-        case audioMasterEndEdit:
-            return 1;
-        case audioMasterOpenFileSelector:
-        case audioMasterCloseFileSelector:
-            return 0;
-        default:
-            logger.log(Level.DEBUG, "unhandled VST host opcode " + opcode);
-            return 0;
-        }
+            case audioMasterTempoAt -> (long) (host.getTempo() * 10000);
+            case audioMasterGetNumAutomatableParameters -> 0;
+            case audioMasterGetParameterQuantization -> 1;
+            case audioMasterIOChanged -> {
+                if (plugin != null) plugin.refresh();
+                yield 1;
+            }
+            case audioMasterNeedIdle -> 1;
+            case audioMasterSizeWindow -> host.sizeWindow(plugin, index, (int) value) ? 1 : 0;
+            case audioMasterGetSampleRate -> (long) host.getSampleRate();
+            case audioMasterGetBlockSize -> host.getBlockSize();
+            case audioMasterGetInputLatency, audioMasterGetOutputLatency -> 0;
+            case audioMasterWillReplaceOrAccumulate -> 1; // replace
+            case audioMasterGetCurrentProcessLevel -> VstConst.VST_ProcessLevelRealtime;
+            case audioMasterGetAutomationState -> 1; // off
+            case audioMasterGetVendorString -> writeString(ptr, host.getVendor(), VstConst.VST_MaxVendorStrLen);
+            case audioMasterGetProductString -> writeString(ptr, host.getProduct(), VstConst.VST_MaxProductStrLen);
+            case audioMasterGetVendorVersion -> host.getVendorVersion();
+            case audioMasterVendorSpecific -> 0;
+            case audioMasterCanDo -> canDo(ptr);
+            case audioMasterGetLanguage -> VstConst.VST_LangEnglish;
+            case audioMasterGetDirectory -> 0;
+            case audioMasterUpdateDisplay -> {
+                host.updateDisplay(plugin);
+                yield 1;
+            }
+            case audioMasterBeginEdit, audioMasterEndEdit -> 1;
+            case audioMasterOpenFileSelector, audioMasterCloseFileSelector -> 0;
+            default -> {
+                logger.log(Level.DEBUG, "unhandled VST host opcode " + opcode);
+                yield 0;
+            }
+        };
     }
 
     /**

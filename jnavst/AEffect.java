@@ -30,26 +30,26 @@ public class AEffect extends Structure {
      */
     public int magic;
 
-    public DispatcherCallback dispatcher;
+    DispatcherCallback dispatcher;
 
     /** the accumulating process call, deprecated in 2.4 and null in most plug-ins */
     public ProcessCallback process;
 
-    public SetParameterCallback setParameter;
-    public GetParameterCallback getParameter;
+    SetParameterCallback setParameter;
+    GetParameterCallback getParameter;
 
     // number of Programs
-    public int numPrograms;
+    int numPrograms;
     // all programs are assumed to have numParams
     // parameters
-    public int numParams;
+    int numParams;
     // number of Audio Inputs
-    public int numInputs;
+    int numInputs;
     // number of Audio Outputs
-    public int numOutputs;
+    int numOutputs;
 
     // see constants (Flags Bits)
-    public int flags;
+    private int flags;
 
     // reserved for Host, must be 0 (Dont use it)
     public Pointer resvd1;
@@ -57,7 +57,7 @@ public class AEffect extends Structure {
     public Pointer resvd2;
 
     // for algorithms which need input in the first place
-    public int initialDelay;
+    int initialDelay;
 
     // number of realtime qualities (0: realtime)
     public int realQualities;
@@ -70,10 +70,10 @@ public class AEffect extends Structure {
     // user access
     public Pointer user;
 
-    public int uniqueID;
+    int uniqueID;
     public int version;
 
-    public ProcessCallback processReplacing;
+    ProcessCallback processReplacing;
 
     public ProcessDoubleCallback processDoubleReplacing;
 
