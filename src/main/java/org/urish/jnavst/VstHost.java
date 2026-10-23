@@ -1,4 +1,9 @@
+/*
+ * https://github.com/urish/cintie/tree/master/src/main/java/org/urish/jnavst
+ */
+
 package org.urish.jnavst;
+
 
 /**
  * The side of the conversation the application owns.

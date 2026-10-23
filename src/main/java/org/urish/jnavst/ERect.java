@@ -1,3 +1,7 @@
+/*
+ * https://github.com/urish/cintie/tree/master/src/main/java/org/urish/jnavst
+ */
+
 package org.urish.jnavst;
 
 import java.util.Arrays;
@@ -5,6 +9,7 @@ import java.util.List;
 
 import com.sun.jna.Pointer;
 import com.sun.jna.Structure;
+
 
 public class ERect extends Structure {
 	public short top;

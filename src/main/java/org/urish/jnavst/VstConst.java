@@ -1,4 +1,9 @@
+/*
+ * https://github.com/urish/cintie/tree/master/src/main/java/org/urish/jnavst
+ */
+
 package org.urish.jnavst;
+
 
 /**
  * The constants of the VST 2.4 plug-in interface, as they are spelled in {@code aeffect.h} and

@@ -6,7 +6,15 @@
 
 package vavi.sound.vst;
 
+import java.nio.file.Files;
+import java.nio.file.Paths;
+
+import vavi.util.properties.annotation.Property;
+import vavi.util.properties.annotation.PropsEntity;
+
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIf;
 
 
 /**
