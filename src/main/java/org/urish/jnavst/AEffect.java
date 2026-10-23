@@ -30,26 +30,26 @@ public class AEffect extends Structure {
      */
     public int magic;
 
-    DispatcherCallback dispatcher;
+    public DispatcherCallback dispatcher;
 
     /** the accumulating process call, deprecated in 2.4 and null in most plug-ins */
     public ProcessCallback process;
 
-    SetParameterCallback setParameter;
-    GetParameterCallback getParameter;
+    public SetParameterCallback setParameter;
+    public GetParameterCallback getParameter;
 
     // number of Programs
-    int numPrograms;
+    public int numPrograms;
     // all programs are assumed to have numParams
     // parameters
-    int numParams;
+    public int numParams;
     // number of Audio Inputs
-    int numInputs;
+    public int numInputs;
     // number of Audio Outputs
-    int numOutputs;
+    public int numOutputs;
 
     // see constants (Flags Bits)
-    private int flags;
+    public int flags;
 
     // reserved for Host, must be 0 (Dont use it)
     public Pointer resvd1;
@@ -57,7 +57,7 @@ public class AEffect extends Structure {
     public Pointer resvd2;
 
     // for algorithms which need input in the first place
-    int initialDelay;
+    public int initialDelay;
 
     // number of realtime qualities (0: realtime)
     public int realQualities;
@@ -70,10 +70,10 @@ public class AEffect extends Structure {
     // user access
     public Pointer user;
 
-    int uniqueID;
+    public int uniqueID;
     public int version;
 
-    ProcessCallback processReplacing;
+    public ProcessCallback processReplacing;
 
     public ProcessDoubleCallback processDoubleReplacing;
 
@@ -179,6 +179,11 @@ public class AEffect extends Structure {
         Opcode(int code) {
             this.code = code;
         }
+    }
+
+    /** for a plug-in built here, a {@link VstEffect} */
+    void setFlags(int flags) {
+        this.flags = flags;
     }
 
     /** whether {@link #flags} has all of the given bits */

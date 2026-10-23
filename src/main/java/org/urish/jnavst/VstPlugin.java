@@ -74,6 +74,9 @@ public class VstPlugin {
 
     private final Memory stringBuffer = new Memory(STRING_BUFFER);
 
+    /** the plug-in when it is written in java and lives in this process, null for a native one */
+    private final VstEffect javaEffect;
+
     public VstPlugin(File vstFile) {
         this(vstFile, new VstHost() {});
     }
@@ -86,6 +89,7 @@ public class VstPlugin {
      * @param shellPluginId which plug-in a shell library should become, or 0 for a plain one
      */
     public VstPlugin(File vstFile, VstHost host, int shellPluginId) {
+        this.javaEffect = null;
         this.file = vstFile;
         this.shellPluginId = shellPluginId;
         this.hostCallback = new HostCallback(host);
@@ -107,6 +111,45 @@ public class VstPlugin {
                     .formatted(effect.magic, vstFile));
         }
         hostCallback.plugin = this;
+    }
+
+    /**
+     * Hosts a plug-in written in java, in this process.
+     * <p>
+     * The plug-in is called the way a native one is, through the function pointers of the
+     * {@link AEffect} it builds, and calls back through the host callback's native address,
+     * so this is the whole protocol without a library to load.
+     */
+    public VstPlugin(VstEffect javaEffect, VstHost host) {
+        this.javaEffect = javaEffect;
+        this.file = new File(javaEffect.getClass().getName());
+        this.library = null;
+        this.shellPluginId = 0;
+        this.hostCallback = new HostCallback(host);
+
+        Pointer pointer = javaEffect.main(VstEffect.pointerOf(hostCallback));
+        if (pointer == null) {
+            throw new VstException("VST plugin creation failed: " + javaEffect);
+        }
+        this.handle = pointer;
+        this.effect = new AEffect(pointer);
+        this.effect.read();
+        if (effect.magic != AEffect.K_EFFECT_MAGIC) {
+            throw new VstException("VST plugin creation failed, invalid magic 0x%08x: %s"
+                    .formatted(effect.magic, javaEffect));
+        }
+        hostCallback.plugin = this;
+    }
+
+    /**
+     * The editor of a java plug-in as a component, for a host to put in a window of its own:
+     * the native window handles {@link #editOpen(Component)} needs are not to be had on every
+     * platform, and a java plug-in has no use for one.
+     *
+     * @return null for a native plug-in, or a java one without an editor
+     */
+    public Component getEditorComponent() {
+        return javaEffect != null ? javaEffect.getEditorComponent() : null;
     }
 
     /**
