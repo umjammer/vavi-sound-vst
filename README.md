@@ -5,6 +5,10 @@
 
 # vavi-sound-vst
 
+<img alt="logo" src="src/test/resources/duke_vst.png" width="160" />
+
+vst via jna
+
 ## Install
 
  * [maven](https://jitpack.io/#umjammer/vavi-sound-vst)
@@ -13,4 +17,11 @@
 
 ## References
 
+- [vavi-sound-mdplayer](https://github.com/umjammer/vavi-sound-mdplayer)
+- [vavi-sound-amame](https://github.com/umjammer/vavi-sound-amame)
+
 ## TODO
+
+---
+
+<sub>image designed by @umjammer, drawn by nano banana</sub>
